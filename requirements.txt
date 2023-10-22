@@ -8,7 +8,7 @@ torchmetrics==0.7.3
 boto3==1.17.15
 matplotlib==3.3.4
 protobuf==3.20.0
-numpy==1.19.5
+numpy==1.22.0
 Pillow==8.1.0
 wandb==0.12.2
 test-tube==0.7.3
