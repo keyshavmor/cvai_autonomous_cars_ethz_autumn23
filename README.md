@@ -1,5 +1,7 @@
-# CVAIAC Exercise 1 
+# cvai_autonomous_cars_ethz_autumn23
+Computer Vision and Artificial Intelligence for Autonomous Cars at ETH Zurich Autumn Semester 2023
 
+## Project1
 Dense prediction Dense Predictions from Single Image: Semantic Segmentation and Depth Estimation
 
 ![Teaser](./doc/teaser.png)
