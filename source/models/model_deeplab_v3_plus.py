@@ -30,6 +30,7 @@ class ModelDeepLabV3Plus(torch.nn.Module):
 
         # Uncomment to see the scales of feature pyramid with their respective number of channels.
         # print(", ".join([f"{k}:{v.shape[1]}" for k, v in features.items()]))
+        # out = "1:3, 2:64, 4:64, 8:128, 16:512"
 
         lowest_scale = max(features.keys())
 
