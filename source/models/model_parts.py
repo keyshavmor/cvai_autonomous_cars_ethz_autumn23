@@ -125,7 +125,18 @@ class DecoderDeeplabV3p(torch.nn.Module):
         super(DecoderDeeplabV3p, self).__init__()
 
         # TODO: Implement a proper decoder with skip connections instead of the following
-        self.features_to_predictions = torch.nn.Conv2d(bottleneck_ch, num_out_ch, kernel_size=1, stride=1)
+        self.project_skip = torch.nn.Sequential(
+            torch.nn.Conv2d(skip_4x_ch, 48, kernel_size=1, stride=1, padding=0, bias=False),
+            torch.nn.BatchNorm2d(48),
+            torch.nn.ReLU(),
+        )
+
+        self.features_to_predictions = torch.nn.Sequential(
+            torch.nn.Conv2d(bottleneck_ch + 48, 256, kernel_size=3, stride=1, padding=1, bias=False),
+            torch.nn.BatchNorm2d(256),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(256, num_out_ch, kernel_size=1, stride=1, paddding=0)
+        )
 
     def forward(self, features_bottleneck, features_skip_4x):
         """
@@ -136,17 +147,23 @@ class DecoderDeeplabV3p(torch.nn.Module):
         """
         # TODO: Implement a proper decoder with skip connections instead of the following; keep returned
         #       tensors in the same order and of the same shape.
-        features_4x = F.interpolate(
+
+        features_skip_4x = self.project_skip(features_skip_4x)
+
+        features_bottleneck_4x = F.interpolate(
             features_bottleneck, size=features_skip_4x.shape[2:], mode='bilinear', align_corners=False
         )
-        predictions_4x = self.features_to_predictions(features_4x)
-        return predictions_4x, features_4x
+
+        concat_features = torch.cat([features_bottleneck_4x, features_skip_4x], dim=1)
+        predictions_4x = self.features_to_predictions(concat_features)
+
+        return predictions_4x, features_bottleneck_4x
 
 
 class ASPPpart(torch.nn.Sequential):
     def __init__(self, in_channels, out_channels, kernel_size, stride, padding, dilation):
         super().__init__(
-            torch.nn.Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, bias=False),
+            torch.nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=padding, dilation=dilation, bias=False),
             torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(),
         )
