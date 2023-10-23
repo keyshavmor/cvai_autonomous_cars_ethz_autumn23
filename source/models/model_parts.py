@@ -204,8 +204,6 @@ class ASPP(torch.nn.Module):
         x4 = self.aspp3_9(x)
         x5 = self.aspp_pooling(x)
         x5 = F.interpolate(x5, size=x.shape[-2:], mode='bilinear', align_corners=False)
-        print(x1.shape, x2.shape, x3.shape, x4.shape, x5.shape)
-
 
         concat_x = torch.cat([x1, x2, x3, x4, x5], dim=1)
         out = self.conv_out(concat_x)
