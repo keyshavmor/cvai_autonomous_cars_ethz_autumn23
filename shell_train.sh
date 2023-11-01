@@ -35,7 +35,7 @@ python -m source.scripts.train \
   --log_dir ${SAVEDIR} \
   --dataset_root ${TMPDIR}/miniscapes \
   --name Default \
-  --model_name deeplabv3p \
+  --model_name deeplabv3p_multitask \
   --optimizer adam \
   --tasks depth semseg \
   --optimizer_lr 0.0001 \

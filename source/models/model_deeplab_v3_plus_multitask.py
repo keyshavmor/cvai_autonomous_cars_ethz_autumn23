@@ -23,6 +23,13 @@ class ModelDeepLabV3PlusMultiTask(torch.nn.Module):
 
         # TODO: Implement aspps and decoders for each task as a ModuleDict.
 
+        for task, num_ch in self.outputs_desc.items():
+            aspps[task] = ASPP(ch_out_encoder_bottleneck, 256)
+            decoders[task] = DecoderDeeplabV3p(256, ch_out_encoder_4x, num_ch)
+            
+        self.aspps = torch.nn.ModuleDict(aspps)
+        self.decoders = torch.nn.ModuleDict(decoders)
+
     def forward(self, x):
         input_resolution = (x.shape[2], x.shape[3])
 
@@ -36,5 +43,11 @@ class ModelDeepLabV3PlusMultiTask(torch.nn.Module):
 
         # TODO: implement the forward pass for each task as in the previous exercise.
         # However, now task's aspp and decoder need to be forwarded separately.
+        
+        for task, _ in self.outputs_desc.items():
+            features_tasks = self.aspps[task](features_lowest)
+            predictions_4x, _ = self.decoders[task](features_tasks, features[4])
+            predictions_1x = F.interpolate(predictions_4x, size=input_resolution, mode='bilinear', align_corners=False)
+            out[task] = predictions_1x.exp().clamp(0.1, 300.0) if task == "depth" else predictions_1x
         
         return out
