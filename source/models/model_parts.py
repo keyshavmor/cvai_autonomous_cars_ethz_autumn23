@@ -135,6 +135,9 @@ class DecoderDeeplabV3p(torch.nn.Module):
             torch.nn.Conv2d(bottleneck_ch + 48, 256, kernel_size=3, stride=1, padding=1, bias=False),
             torch.nn.BatchNorm2d(256),
             torch.nn.ReLU(),
+            torch.nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1, bias=False),
+            torch.nn.BatchNorm2d(256),
+            torch.nn.ReLU(),
             torch.nn.Conv2d(256, num_out_ch, kernel_size=1, stride=1, padding=0)
         )
 
@@ -184,7 +187,7 @@ class ASPP(torch.nn.Module):
         self.aspp_pooling = torch.nn.Sequential(
             torch.nn.AdaptiveAvgPool2d(1),
             torch.nn.Conv2d(in_channels, out_channels, 1, bias=False),
-            torch.nn.BatchNorm2d(out_channels),
+            torch.nn.BatchNorm2d(out_channels), # CHECK
             torch.nn.ReLU()
         )
 
