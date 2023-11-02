@@ -246,6 +246,16 @@ class SelfAttention(torch.nn.Module):
         # TODO: Implement self attention, you need a projection
         # and the normalization layer
         
+        self.head_dim = dim // self.num_heads
+        assert self.head_dim * self.num_heads == dim, "You should set embed_dim so that it can be devided by num_heads"
+        
+        self.layer_norm = nn.LayerNorm(dim)
+        
+        self.proj_q = nn.Linear(dim, dim)
+        self.proj_k = nn.Linear(dim, dim)
+        self.proj_v = nn.Linear(dim, dim)
+
+        
     def forward(self, x, pos_embed):
         """
         Pre-normalziation style self-attetion
@@ -268,8 +278,45 @@ class SelfAttention(torch.nn.Module):
         # Remember that also the positional embedding needs to follow a similar rearrangement
         # to be consistent with the shapes of the query
         # Remember to rearrange the output tensor such that the output shape is B N C again
-        x = self.out(x)
-        return x
+        
+        DEBUG = False
+        x = x.transpose(1, 2) # (B, C, N)
+        
+        q = self.proj_q(x) # (B, C, N)
+        k = self.proj_k(x) # (B, C, N)
+        v = self.proj_v(x) # (B, C, N)
+        
+        if pos_embed:
+            q += pos_embed
+            
+        x = x.transpose(1, 2) # (B, N, C)
+        
+        q = q.reshape(B, self.num_heads, self.head_dim, C) # (B, num_heads, head_dim, C)
+        k = k.reshape(B, self.num_heads, self.head_dim, C) # (B, num_heads, head_dim, C)
+        v = v.reshape(B, self.num_heads, self.head_dim, C) # (B, num_heads, head_dim, C)
+        
+        dim_k = q.shape[2] # = head_dims
+        multi_attn_weight = torch.matmul(q, k.transpose(2, 3)) # [B, num_heads, head_dim, C] * [B, num_heads, C, head_dim] = [B, num_heads, head_dim, head_dim]
+        if DEBUG:
+            print("multi_attn_weight", multi_attn_weight.shape, B, N, C, self.num_heads, self.head_dim)
+        
+        multi_attn_weight = multi_attn_weight / dim_k
+        multi_attn_weight = F.softmax(multi_attn_weight, dim=3) # [B, num_heads, head_dim]
+        if DEBUG:
+            print("after softmax", multi_attn_weight.shape, B, N, C, self.num_heads, self.head_dim)
+        
+        multi_attn_out = torch.matmul(multi_attn_weight, v) # [B, num_heads, head_dim, C] * [B, num_heads, head_dim] = [B, num_heads, head_dim, C]
+        if DEBUG:
+            print("multi_attn_out", multi_attn_out.shape, B, N, C, self.num_heads, self.head_dim)
+        attn_out = multi_attn_out.reshape(B, N, C)
+        if DEBUG:
+            print("attn_out", attn_out.shape, B, N, C, self.num_heads, self.head_dim)
+            
+        attn_out = attn_out.transpose(1, 2) # (B, N, C)
+        o = self.out(attn_out)
+        o = o.transpose(1, 2)
+
+        return o
 
 
 class TransformerBlock(torch.nn.Module):

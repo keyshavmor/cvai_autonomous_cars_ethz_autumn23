@@ -28,6 +28,9 @@ class ModelAdaptiveDepth(torch.nn.Module):
         self.latents = nn.Parameter(torch.randn(1, cfg.num_bins, 256), requires_grad=True)
         depth_values = torch.linspace(0.1, 100.0, cfg.num_bins).view(1, cfg.num_bins, 1, 1)
         self.depth_values = nn.Parameter(depth_values, requires_grad=False)
+        
+        
+        self.transformer_block = TransformerBlock(ch_out_encoder_4x)
 
     def forward(self, x):
         B, _, H, W = x.shape
@@ -52,6 +55,8 @@ class ModelAdaptiveDepth(torch.nn.Module):
         #    the bins: softmax of the dot product between queries and latents
         # The predefined depth_values and latents, will become learnable and 
         # determined by the specific input
+        
+        
         similarity = torch.einsum("bcij,bnc->bnij", queries, self.latents.repeat(B, 1, 1))
         predictions_4x = (F.softmax(similarity, dim=1) * self.depth_values.repeat(B, 1, 1, 1)).sum(dim=1, keepdim=True)
 
