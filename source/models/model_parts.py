@@ -312,9 +312,9 @@ class SelfAttention(torch.nn.Module):
         if DEBUG:
             print("attn_out", attn_out.shape, B, N, C, self.num_heads, self.head_dim)
             
-        attn_out = attn_out.transpose(1, 2) # (B, N, C)
+        attn_out = attn_out.transpose(1, 2) # (B, C, N)
         o = self.out(attn_out)
-        o = o.transpose(1, 2)
+        o = o.transpose(1, 2) # (B, N, C)
 
         return o
 
