@@ -196,7 +196,6 @@ class ASPP(torch.nn.Module):
             torch.nn.Conv2d(5 * out_channels, out_channels, 1, bias=False),
             torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(),
-            torch.nn.Dropout(0.1)
         )
 
     def forward(self, x):
@@ -279,7 +278,6 @@ class SelfAttention(torch.nn.Module):
         # to be consistent with the shapes of the query
         # Remember to rearrange the output tensor such that the output shape is B N C again
         
-        DEBUG = False
         x = x.transpose(1, 2) # (B, C, N)
         
         q = self.proj_q(x) # (B, C, N)
@@ -296,21 +294,13 @@ class SelfAttention(torch.nn.Module):
         v = v.reshape(B, self.num_heads, self.head_dim, C) # (B, num_heads, head_dim, C)
         
         dim_k = q.shape[2] # = head_dims
-        multi_attn_weight = torch.matmul(q, k.transpose(2, 3)) # [B, num_heads, head_dim, C] * [B, num_heads, C, head_dim] = [B, num_heads, head_dim, head_dim]
-        if DEBUG:
-            print("multi_attn_weight", multi_attn_weight.shape, B, N, C, self.num_heads, self.head_dim)
-        
+        multi_attn_weight = torch.matmul(q, k.transpose(2, 3)) # [B, num_heads, head_dim, C] * [B, num_heads, C, head_dim] = [B, num_heads, head_dim, head_dim]        
         multi_attn_weight = multi_attn_weight / dim_k
         multi_attn_weight = F.softmax(multi_attn_weight, dim=3) # [B, num_heads, head_dim]
-        if DEBUG:
-            print("after softmax", multi_attn_weight.shape, B, N, C, self.num_heads, self.head_dim)
+
         
         multi_attn_out = torch.matmul(multi_attn_weight, v) # [B, num_heads, head_dim, C] * [B, num_heads, head_dim] = [B, num_heads, head_dim, C]
-        if DEBUG:
-            print("multi_attn_out", multi_attn_out.shape, B, N, C, self.num_heads, self.head_dim)
         attn_out = multi_attn_out.reshape(B, N, C)
-        if DEBUG:
-            print("attn_out", attn_out.shape, B, N, C, self.num_heads, self.head_dim)
             
         attn_out = attn_out.transpose(1, 2) # (B, C, N)
         o = self.out(attn_out)

@@ -34,10 +34,9 @@ class SILogLoss(torch.nn.Module):
 
         # TODO: Implement a proper silog loss and taking into consideration
         # the invalid pixels (target is 0).
-        K = 0.15
         mask = (target > 0)
-        d = torch.log(input[mask]) - torch.log(target[mask])
-        return (d**2).mean() - K * (d.mean())**2
+        d = torch.log(input[mask] + self.eps) - torch.log(target[mask] + self.eps)
+        return torch.sqrt((d**2).mean() - self.gamma * (d.mean())**2)
         
         # loss = (input - target).sum()**2
         
