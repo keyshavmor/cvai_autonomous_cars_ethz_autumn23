@@ -46,7 +46,7 @@ python -m source.scripts.train \
   --name sbatch_multi \
   --model_name deeplabv3p \
   --optimizer adam \
-  --tasks semseg \
+  --tasks depth semseg \
   --optimizer_lr 0.0001 \
   --batch_size 16 \
   --num_epochs 10 \

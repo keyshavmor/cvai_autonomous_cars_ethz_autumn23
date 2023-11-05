@@ -1,6 +1,7 @@
 from typing import List
 
 import torch
+import torch.nn.functional as F
 
 @torch.jit.script
 def masked_mean_var(data: torch.Tensor, mask: torch.Tensor, dim: List[int]):
@@ -34,6 +35,10 @@ class SILogLoss(torch.nn.Module):
 
         # TODO: Implement a proper silog loss and taking into consideration
         # the invalid pixels (target is 0).
-        loss = (input - target).abs().sum()
+        #loss = (input - target).abs().sum()
+        # let's only compute the loss on non-null pixels from thes ground-truth depth-map
+        non_zero_mask = (target > 0) & (input > 0)
 
-        return loss
+        # SILog
+        d = torch.log(input[non_zero_mask]) - torch.log(target[non_zero_mask])
+        return torch.sqrt((d ** 2).mean() - self.gamma * (d.mean() ** 2))
