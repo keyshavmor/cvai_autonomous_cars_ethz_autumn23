@@ -64,7 +64,7 @@ class Encoder(torch.nn.Module):
             model = fn_name(**encoder_kwargs)
         else:
             # special case due to prohibited dilation in the original BasicBlock
-            pretrained = encoder_kwargs.pop('pretrained', False)
+            pretrained = encoder_kwargs.pop('pretrained', True)
             progress = encoder_kwargs.pop('progress', True)
             model = resnet._resnet(
                 name, BasicBlockWithDilation, _basic_block_layers[name], pretrained, progress, **encoder_kwargs
@@ -119,13 +119,22 @@ class Encoder(torch.nn.Module):
 
         return out
 
-
 class DecoderDeeplabV3p(torch.nn.Module):
     def __init__(self, bottleneck_ch, skip_4x_ch, num_out_ch):
         super(DecoderDeeplabV3p, self).__init__()
 
         # TODO: Implement a proper decoder with skip connections instead of the following
         self.features_to_predictions = torch.nn.Conv2d(bottleneck_ch, num_out_ch, kernel_size=1, stride=1)
+        self.features_skip_conv = nn.Sequential(nn.Conv2d(skip_4x_ch, 64, kernel_size=1, stride=1, bias=False),
+                                                nn.BatchNorm2d(64),
+                                                nn.ReLU())
+        self.features_cat_conv = nn.Sequential(nn.Conv2d(bottleneck_ch+64, 256, kernel_size=3, stride=1, bias=False),
+                                                nn.BatchNorm2d(256),
+                                                nn.ReLU(),
+                                                nn.Conv2d(256, 256, kernel_size=3, stride=1, bias=False),
+                                                nn.BatchNorm2d(256),
+                                                nn.ReLU(),
+                                                nn.Conv2d(256, num_out_ch, kernel_size=1, stride=1))        
 
     def forward(self, features_bottleneck, features_skip_4x):
         """
@@ -139,8 +148,12 @@ class DecoderDeeplabV3p(torch.nn.Module):
         features_4x = F.interpolate(
             features_bottleneck, size=features_skip_4x.shape[2:], mode='bilinear', align_corners=False
         )
-        predictions_4x = self.features_to_predictions(features_4x)
-        return predictions_4x, features_4x
+
+        features_skip_conv = self.features_skip_conv(features_skip_4x)
+        features_cat = torch.cat((features_4x, features_skip_4x), dim=1)
+        features_cat_conv = self.features_cat_conv(features_cat)
+        #predictions_4x = self.features_to_predictions(features_4x)
+        return features_cat_conv, features_4x
 
 
 class ASPPpart(torch.nn.Sequential):
@@ -156,12 +169,34 @@ class ASPP(torch.nn.Module):
     def __init__(self, in_channels, out_channels, rates=(3, 6, 9)):
         super().__init__()
         # TODO: Implement ASPP properly instead of the following
-        self.conv_out = ASPPpart(in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1)
+        #self.conv_out = ASPPpart(in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1)
+        self.aspp1 = ASPPpart(in_channels, out_channels, kernel_size=1, stride=1, padding=0, dilation=1)
+        self.aspp2 = ASPPpart(in_channels, out_channels, kernel_size=3, stride=1, padding=rates[0], dilation=rates[0])
+        self.aspp3 = ASPPpart(in_channels, out_channels, kernel_size=3, stride=1, padding=rates[1], dilation=rates[1])
+        self.aspp4 = ASPPpart(in_channels, out_channels, kernel_size=3, stride=1, padding=rates[2], dilation=rates[2])
+
+        self.average_pooling = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)),
+                                             nn.Conv2d(in_channels, out_channels, 1, stride=1, bias=False),
+                                             nn.BatchNorm2d(out_channels),
+                                             nn.ReLU())
+        self.conv1x1 = nn.Conv2d(5 * out_channels, out_channels, 1, bias=False)
+        self.batch_norm = torch.nn.BatchNorm2d(out_channels)
+        self.activation = nn.ReLU()
 
     def forward(self, x):
-        # TODO: Implement ASPP properly instead of the following
-        out = self.conv_out(x)
-        return out
+        # Concatenate all branches
+        aspp1 = self.aspp1(x)
+        aspp2 = self.aspp2(x)
+        aspp3 = self.aspp3(x)
+        aspp4 = self.aspp4(x)
+        aspp5 = self.average_pooling(x)
+        aspp5 = F.interpolate(aspp5, size=aspp4.size()[2:], mode='bilinear', align_corners=True)
+        x = torch.cat((aspp1, aspp2, aspp3, aspp4, aspp5), dim=1)
+
+        x = self.conv1x1(x)
+        x = self.batch_norm(x)
+        x = self.activation(x)
+        return x
 
 
 class MLP(torch.nn.Module):
