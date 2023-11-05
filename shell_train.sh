@@ -37,7 +37,7 @@ python -m source.scripts.train \
   --name Default \
   --model_name adaptive_depth \
   --optimizer adam \
-  --tasks depth semseg \
+  --tasks depth \
   --optimizer_lr 0.0001 \
   --batch_size 16 \
   --num_epochs 10 \

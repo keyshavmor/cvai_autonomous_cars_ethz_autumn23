@@ -20,7 +20,7 @@ class ModelAdaptiveDepth(torch.nn.Module):
 
         ch_out_encoder_bottleneck, ch_out_encoder_4x = get_encoder_channel_counts(cfg.model_encoder_name)
 
-        self.decoder = DecoderDeeplabV3p(ch_out_encoder_bottleneck, ch_out_encoder_4x, 256) # ch_out_decoder = 256
+        self.decoder = DecoderDeeplabV3p(ch_out_encoder_bottleneck, ch_out_encoder_4x, 256)
 
         self.conv3x3 = nn.Conv2d(256, 256, kernel_size=3, stride=1, padding=1)
 
@@ -29,13 +29,14 @@ class ModelAdaptiveDepth(torch.nn.Module):
         # self.depth_values = nn.Parameter(depth_values, requires_grad=False)
         
         self.extractor = LatentsExtractor(cfg.num_bins)
-        self.transformer_blocks = nn.ModuleList([TransformerBlock(256) for _ in range(cfg.num_transformer_layers)])
+        self.transformer_blocks = nn.Sequential(*[TransformerBlock(256) for _ in range(cfg.num_transformer_layers)])
         regressor = []
         for i in range(cfg.expansion):
             if (i == cfg.expansion - 1):
                 regressor.extend([nn.Linear(256, 1), nn.ReLU()])
             else:
                 regressor.extend([nn.Linear(256, 256), nn.LeakyReLU()])
+        self.regressor = nn.Sequential(*regressor)
 
     def forward(self, x):
         B, _, H, W = x.shape
@@ -49,7 +50,7 @@ class ModelAdaptiveDepth(torch.nn.Module):
 
         features_4x, _ = self.decoder(features_lowest, features[4])
 
-        queries = self.conv3x3(features_4x) # [B, 256, h, w]
+        queries = self.conv3x3(features_4x) # [B, C, h, w] (C = 256)
 
         # TODO: Implement the adaptive extraction of bins and depth computation
         # 1. extract "latents" (i.e., learnable bins) with LatentsExtractor
@@ -66,24 +67,25 @@ class ModelAdaptiveDepth(torch.nn.Module):
         
         bins = self.regressor(latents) # [B, num_bins, 1]
         bins = bins + 0.1
-        bins = bins / bins.sum(dim=1, keepdim=True) 
-        bins = torch.cat([torch.zeros(B, 1, 1), bins], dim=1)
-        bin_edges = torch.cumsum(bins, dim=1)
-        bin_edges = 0.1 + (100 - 0.1) * bin_edges
-        depth_values = (bin_edges[:, :-1, :] + bin_edges[:, 1:, :])*0.5
+        bins = bins / bins.sum(dim=1, keepdim=True)  # [B, num_bins, 1]
+        bins = F.pad(bins, (0, 0, 1, 0))  # [B, num_bins + 1, 1]
+        bin_edges = torch.cumsum(bins, dim=1)  # [B, num_bins + 1, 1]
+        bin_edges = 0.1 + (100 - 0.1) * bin_edges  # [B, num_bins + 1, 1]
+        depth_values = (bin_edges[:, :-1, :] + bin_edges[:, 1:, :])*0.5  # [B, num_bins, 1]
         
-        similarity = torch.einsum("bcij,bnc->bnij", queries, latents) #= [B, num_bins, h, w], [B, num_bins, C],  [B, C, h, w] 
+        similarity = torch.einsum("bcij,bnc->bnij", queries, latents) #= [B, num_bins, h, w] = [B, C, h, w]. [B, num_bins, C]
         
-        predictions_4x = (F.softmax(similarity, dim=1) * depth_values.repeat(B, -1, 1, 1)).sum(dim=1, keepdim=True)
-
-        predictions_1x = F.interpolate(predictions_4x, size=input_resolution, mode='bilinear', align_corners=False)
+        predictions_4x = (F.softmax(similarity, dim=1) * depth_values.reshape(B, -1, 1, 1)).sum(dim=1, keepdim=True)
+        predictions_1x = F.interpolate(predictions_4x, size=input_resolution, mode='bilinear', align_corners=False).reshape(B, H, W)
 
         out = {}
         offset = 0
 
         for task, num_ch in self.outputs_desc.items():
-            current_precition = predictions_1x[:, offset:offset+num_ch, :, :]
-            out[task] = current_precition
+            if task == "depth":
+                out[task] = predictions_1x
+            else:
+                NotImplementedError
             offset += num_ch
 
         return out
