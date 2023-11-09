@@ -14,7 +14,7 @@ class ModelDeepLabV3Plus(torch.nn.Module):
             cfg.model_encoder_name,
             pretrained=cfg.pretrained,
             zero_init_residual=True,
-            replace_stride_with_dilation=(False, False, True),
+            replace_stride_with_dilation=(False, False, False),
         )
 
         ch_out_encoder_bottleneck, ch_out_encoder_4x = get_encoder_channel_counts(cfg.model_encoder_name)
@@ -30,7 +30,6 @@ class ModelDeepLabV3Plus(torch.nn.Module):
 
         # Uncomment to see the scales of feature pyramid with their respective number of channels.
         # print(", ".join([f"{k}:{v.shape[1]}" for k, v in features.items()]))
-        # out = "1:3, 2:64, 4:64, 8:128, 16:512"
 
         lowest_scale = max(features.keys())
 

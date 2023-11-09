@@ -34,7 +34,7 @@ mkdir -p ${SAVEDIR}
 tar -xf ${DATA} -C ${TMPDIR}
 
 # BEGIN YOUR CHANGES HERE
-export TEAM_ID=20
+export TEAM_ID=1
 
 # Run training
 echo "Start training"
@@ -49,11 +49,11 @@ python -m source.scripts.train \
   --tasks semseg \
   --optimizer_lr 0.0001 \
   --batch_size 16 \
-  --num_epochs 10 \
+  --num_epochs 1 \
   --workers ${SLURM_CPUS_PER_TASK} \
   --workers_validation ${SLURM_CPUS_PER_TASK} \
   --batch_size_validation 16 \
-  --optimizer_float_16 no \
+  --optimizer_float_16 no
   # ... you can pass further arguments as specified in utils/config.py
   # DO NOT FORGET ADDING BACKSLASHES for additional flags (except the last one)
 
