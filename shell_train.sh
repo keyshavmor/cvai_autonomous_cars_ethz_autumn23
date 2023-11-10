@@ -25,7 +25,7 @@ mkdir -p ${SAVEDIR}
 tar -xf ${DATA} -C ${TMPDIR}
 
 # BEGIN YOUR CHANGES HERE
-export TEAM_ID=1
+export TEAM_ID=20
 
 # Run training
 echo "Start training"
