@@ -224,10 +224,25 @@ class MLP(torch.nn.Module):
 class SelfAttention(torch.nn.Module):
     def __init__(self, dim, num_heads=4, dropout=0.0):
         super().__init__()
+
+        # Check if input_dim is divisible by the number of heads
+        assert input_dim % num_heads == 0, "Input dimension must be divisible by the number of heads."
+
         self.num_heads = num_heads
         self.out = nn.Linear(dim, dim)
         self.temperature = 1.0
         self.dropout = nn.Dropout(dropout)
+        self.layer_norm = nn.LayerNorm(feature_dim, eps=1e-5, elementwise_affine=True)
+        # Calculate the dimension of each head
+        self.head_dim = dim // self.num_heads
+
+        # Linear transformations for query, key, and value for each head
+        self.q_linear = nn.Linear(self.head_dim, self.head_dim, bias=False)
+        self.k_linear = nn.Linear(self.head_dim, self.head_dim, bias=False)
+        self.v_linear = nn.Linear(self.head_dim, self.head_dim, bias=False)
+
+        # Output linear layer after concatenating the heads
+        self.out_linear = nn.Linear(self.head_dim * self.num_heads, dim)
 
         # TODO: Implement self attention, you need a projection
         # and the normalization layer
@@ -240,6 +255,32 @@ class SelfAttention(torch.nn.Module):
         :return: tensor processed with output shape same as input
         """
         B, N, C = x.shape
+
+        normalised_x = self.layer_norm(x)
+
+        normalised_x = normalised_x.view(B, N, self.num_heads, self.head_dim)
+
+        # Perform linear transformations for query, key, and value for each head
+        q = self.q_linear(normalised_x)
+        k = self.k_linear(normalised_x)
+        v = self.v_linear(normalised_x)
+
+         # Calculate the scaled dot-product attention scores
+        scores = torch.matmul(q, k.transpose(-2, -1)) / torch.sqrt(torch.tensor(self.head_dim, dtype=torch.float32))
+
+        # Apply softmax to get attention weights
+        attention_weights = torch.nn.functional.softmax(scores, dim=-1)
+
+        # Apply attention weights to the value projections
+        out = torch.matmul(attention_weights, v)
+
+        # Concatenate the heads
+        out = out.view(B, N, self.head_dim * self.num_heads)
+
+        # Apply the output linear layer
+        x = self.out_linear(out)
+
+        return x
 
         # TODO: Implement self attention, you need:
         # 1. obtain query, key, value
