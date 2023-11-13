@@ -99,7 +99,7 @@ def command_line_parser():
         '--model_encoder_name', type=str, default='resnet18', choices=['resnet18', 'resnet34'],
         help='CNN architecture encoder')
     parser.add_argument(
-        '--pretrained', type=str2bool, default=False, help='Use ImageNet pretrained weights')
+        '--pretrained', type=str2bool, default=True, help='Use ImageNet pretrained weights')
     
     parser.add_argument(
         '--loss_weight_semseg', type=float, default=0.5, help='Weight of semantic segmentation loss')
