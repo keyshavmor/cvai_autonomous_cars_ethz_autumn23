@@ -278,6 +278,8 @@ class SelfAttention(torch.nn.Module):
         # to be consistent with the shapes of the query
         # Remember to rearrange the output tensor such that the output shape is B N C again
         
+        x = self.layer_norm(x) # (B, N, C)
+        
         x = x.transpose(1, 2) # (B, C, N)
         
         q = self.proj_q(x) # (B, C, N)
