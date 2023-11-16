@@ -34,7 +34,7 @@ mkdir -p ${SAVEDIR}
 tar -xf ${DATA} -C ${TMPDIR}
 
 # BEGIN YOUR CHANGES HERE
-export TEAM_ID=1
+export TEAM_ID=20
 
 # Run training
 echo "Start training"
@@ -46,10 +46,10 @@ python -m source.scripts.train \
   --name sbatch_multi \
   --model_name deeplabv3p \
   --optimizer adam \
-  --tasks semseg \
+  --tasks semseg depth\
   --optimizer_lr 0.0001 \
   --batch_size 16 \
-  --num_epochs 1 \
+  --num_epochs 10 \
   --workers ${SLURM_CPUS_PER_TASK} \
   --workers_validation ${SLURM_CPUS_PER_TASK} \
   --batch_size_validation 16 \

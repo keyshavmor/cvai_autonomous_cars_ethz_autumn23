@@ -102,9 +102,9 @@ def command_line_parser():
         '--pretrained', type=str2bool, default=True, help='Use ImageNet pretrained weights')
     
     parser.add_argument(
-        '--loss_weight_semseg', type=float, default=0.5, help='Weight of semantic segmentation loss')
+        '--loss_weight_semseg', type=float, default=0.4, help='Weight of semantic segmentation loss')
     parser.add_argument(
-        '--loss_weight_depth', type=float, default=0.5, help='Weight of depth estimation loss')
+        '--loss_weight_depth', type=float, default=0.6, help='Weight of depth estimation loss')
 
     parser.add_argument(
         '--workers', type=int, default=16, help='Number of worker threads fetching training data')
