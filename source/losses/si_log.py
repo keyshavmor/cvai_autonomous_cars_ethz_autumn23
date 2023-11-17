@@ -30,12 +30,12 @@ class SILogLoss(torch.nn.Module):
             input = input.squeeze(1)
         if target.ndim == 4:
             target = target.squeeze(1)
-            
+        
 
         # TODO: Implement a proper silog loss and taking into consideration
         # the invalid pixels (target is 0).
-        mask = (target > 0)
-        d = torch.log(input + self.eps) - torch.log(target + self.eps)
-        mask_mean, mask_var = masked_mean_var(d, mask, dim= [1,2])
-       
-        return torch.sqrt(mask_var.mean() + self.gamma * mask_mean.mean()**2)
+        non_zero_mask = (target > 0) & (input > 0)
+
+        # SILog
+        d = torch.log(input[non_zero_mask]) - torch.log(target[non_zero_mask])
+        return torch.sqrt((d ** 2).mean() - self.gamma * (d.mean() ** 2))
