@@ -29,14 +29,13 @@ class ModelAdaptiveDepth(torch.nn.Module):
         # self.depth_values = nn.Parameter(depth_values, requires_grad=False)
         
         self.extractor = LatentsExtractor(cfg.num_bins)
-        self.transformer_blocks = nn.Sequential(*[TransformerBlock(256) for _ in range(cfg.num_transformer_layers)])
-        regressor = []
-        for i in range(cfg.expansion):
-            if (i == cfg.expansion - 1):
-                regressor.extend([nn.Linear(256, 1), nn.ReLU()])
-            else:
-                regressor.extend([nn.Linear(256, 256), nn.LeakyReLU()])
-        self.regressor = nn.Sequential(*regressor)
+        self.transformer_blocks = nn.Sequential(*[TransformerBlock(256, num_heads=cfg.num_heads, expansion=cfg.expansion) for _ in range(cfg.num_transformer_layers)])
+        self.regressor = nn.Sequential(nn.Linear(256, 256),
+                                       nn.LeakyReLU(),
+                                       nn.Linear(256, 256),
+                                       nn.LeakyReLU(),
+                                       nn.Linear(256, 1),
+                                       nn.ReLU())
 
     def forward(self, x):
         B, _, H, W = x.shape
@@ -48,7 +47,7 @@ class ModelAdaptiveDepth(torch.nn.Module):
 
         features_lowest = features[lowest_scale]
 
-        features_4x, _ = self.decoder(features_lowest, features[4])
+        features_4x, _ = self.decoder(features_lowest, features[4]) # output channels = C = 256
 
         queries = self.conv3x3(features_4x) # [B, C, h, w] (C = 256)
 

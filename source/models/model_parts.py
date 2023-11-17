@@ -280,16 +280,14 @@ class SelfAttention(torch.nn.Module):
         
         x = self.layer_norm(x) # (B, N, C)
         
-        x = x.transpose(1, 2) # (B, C, N)
         
-        q = self.proj_q(x) # (B, C, N)
-        k = self.proj_k(x) # (B, C, N)
-        v = self.proj_v(x) # (B, C, N)
+        q = self.proj_q(x) # (B, N, C)
+        k = self.proj_k(x) # (B, N, C)
+        v = self.proj_v(x) # (B, N, C)
         
         if pos_embed:
             q += pos_embed
             
-        x = x.transpose(1, 2) # (B, N, C)
         
         q = q.reshape(B, self.num_heads, self.head_dim, C) # (B, num_heads, head_dim, C)
         k = k.reshape(B, self.num_heads, self.head_dim, C) # (B, num_heads, head_dim, C)
@@ -302,11 +300,8 @@ class SelfAttention(torch.nn.Module):
 
         
         multi_attn_out = torch.matmul(multi_attn_weight, v) # [B, num_heads, head_dim, C] * [B, num_heads, head_dim] = [B, num_heads, head_dim, C]
-        attn_out = multi_attn_out.reshape(B, N, C)
-            
-        attn_out = attn_out.transpose(1, 2) # (B, C, N)
+        attn_out = multi_attn_out.reshape(B, N, C)            
         o = self.out(attn_out)
-        o = o.transpose(1, 2) # (B, N, C)
 
         return o
 

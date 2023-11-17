@@ -53,7 +53,7 @@ def command_line_parser():
     parser.add_argument(
         '--expansion', type=int, default=2, help='Task3: Expansion in inverse bottleneck in MLP')
     parser.add_argument(
-        '--num_transformer_layers', type=int, default=2, help='Task3: Number of layer for transformer layer')
+        '--num_transformer_layers', type=int, default=3, help='Task3: Number of layer for transformer layer')
     
     parser.add_argument(
         '--aug_input_crop_size', type=int, default=256, help='Training crop size')
